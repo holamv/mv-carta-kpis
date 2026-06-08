@@ -4,7 +4,7 @@ import type {
   Queja,
   TipoQueja,
 } from '@mv-quejas/shared';
-import { query } from '../config/database.js';
+import { query, type QueryParam } from '../config/database.js';
 
 interface QuejaRow {
   id: number;
@@ -74,7 +74,7 @@ export async function listarQuejas(
   opts: ListarQuejasOpts = {},
 ): Promise<Queja[]> {
   const conditions: string[] = [];
-  const params: unknown[] = [];
+  const params: QueryParam[] = [];
 
   if (opts.estado) {
     conditions.push('estado = ?');

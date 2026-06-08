@@ -24,9 +24,11 @@ export const pool = mysql.createPool({
  * Helper para queries parametrizados.
  * SIEMPRE usar placeholders (?) — nunca interpolar valores en el SQL.
  */
+export type QueryParam = string | number | boolean | null | Date;
+
 export async function query<T = unknown>(
   sql: string,
-  params: unknown[] = [],
+  params: QueryParam[] = [],
 ): Promise<T[]> {
   const [rows] = await pool.execute(sql, params);
   return rows as T[];

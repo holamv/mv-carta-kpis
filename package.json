@@ -7,8 +7,11 @@
     "packages/*"
   ],
   "scripts": {
+    "predev": "npm run build --workspace=packages/shared",
     "dev": "npm run dev --workspace=packages/backend & npm run dev --workspace=packages/frontend",
+    "predev:frontend": "npm run build --workspace=packages/shared",
     "dev:frontend": "npm run dev --workspace=packages/frontend",
+    "predev:backend": "npm run build --workspace=packages/shared",
     "dev:backend": "npm run dev --workspace=packages/backend",
     "build": "npm run build --workspace=packages/shared && npm run build --workspace=packages/backend && npm run build --workspace=packages/frontend",
     "test": "npm test --workspaces --if-present",
