@@ -1,5 +1,10 @@
 {
   "enabledPlugins": {
     "mv-dev@manzanaverde-plugins": true
+  },
+  "permissions": {
+    "allow": [
+      "PowerShell(npm run build --workspace=@mv-quejas/backend)"
+    ]
   }
 }
