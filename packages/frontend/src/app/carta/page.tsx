@@ -36,13 +36,17 @@ export default function CartaPage() {
     const loadTables = async () => {
       setLoadingTables(true);
       try {
+        // Convertir W24-2026 a 242026 para endpoints
+        const [weekPart, yearPart] = semanaSeleccionada.split('-');
+        const semanaId = `${weekPart.substring(1)}${yearPart}`;
+
         const [mealsRes, foodcostRes, complianceRes, availabilityRes, foodcostPlateRes, complianceDetailsRes] = await Promise.all([
-          fetch(`/api/carta/data/top-meals?country=${pais}`),
+          fetch(`/api/carta/data/top-meals?country=${pais}&semana=${semanaSeleccionada}`),
           fetch('/api/carta/data/foodcost-by-country'),
-          fetch(`/api/carta/data/compliance-by-city?semana_id=252026`),
-          fetch(`/api/carta/data/availability-by-kitchen?semana_id=242026`),
+          fetch(`/api/carta/data/compliance-by-city?semana_id=${semanaId}`),
+          fetch(`/api/carta/data/availability-by-kitchen?semana_id=${semanaId}`),
           fetch(`/api/carta/data/foodcost-details?type=by_plate`),
-          fetch(`/api/carta/data/compliance-details?type=rules_by_city&semana_id=252026`),
+          fetch(`/api/carta/data/compliance-details?type=rules_by_city&semana_id=${semanaId}`),
         ]);
 
         if (mealsRes.ok) {
@@ -76,7 +80,7 @@ export default function CartaPage() {
       }
     };
     loadTables();
-  }, [pais]);
+  }, [pais, semanaSeleccionada]);
 
   const handleSemanaAnterior = () => {
     setSemanaSeleccionada(getPreviousWeek(semanaSeleccionada));

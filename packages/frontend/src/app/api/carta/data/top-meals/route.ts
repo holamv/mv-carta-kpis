@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { weekStringToDateRange } from "@/carta/adapters/utils";
 
 const SUPABASE_URL = "https://hzpycmczwkwbfrqzvfyz.supabase.co/rest/v1";
 const SUPABASE_KEY =
@@ -7,10 +8,15 @@ const SUPABASE_KEY =
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const country = request.nextUrl.searchParams.get("country") || "PE";
+    const semana = request.nextUrl.searchParams.get("semana") || "W24-2026";
 
     // Mapeo country code a country_id
     const countryMap: Record<string, number> = { PE: 1, MX: 2, CO: 3 };
     const countryId = countryMap[country] || 1;
+
+    // Obtener rango de fechas para la semana
+    const { start, end } = weekStringToDateRange(semana);
+    const dateFilter = `&order_date=gte.${start}&order_date=lte.${end}`;
 
     // Query: Top platos vendidos + rating + foodcost
     // SELECT meal_name, SUM(unidades) unidades, ROUND(AVG(rating),1) rating, food_cost_pct
@@ -22,7 +28,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // ORDER BY unidades DESC LIMIT 10
 
     const response = await fetch(
-      `${SUPABASE_URL}/meal_orders_daily?select=meal_id,unidades&country_id=eq.${countryId}&order=unidades.desc&limit=100`,
+      `${SUPABASE_URL}/meal_orders_daily?select=meal_id,unidades&country_id=eq.${countryId}${dateFilter}&order=unidades.desc&limit=100`,
       {
         headers: {
           apikey: SUPABASE_KEY,
