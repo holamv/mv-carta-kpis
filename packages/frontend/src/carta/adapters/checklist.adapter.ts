@@ -3,6 +3,7 @@ import type { ChecklistInput, ChecklistOutput } from "../calculations/types";
 import type { MealForChecklist } from "../calculations/types";
 import type { Country } from "../types";
 import { PAIS_REGLAS } from "../config";
+import { COUNTRY_ID_MAP, buildDateRangeFilter } from "./utils";
 
 export class ChecklistAdapter {
   async getChecklistForWeek(pais: Country, semana: string): Promise<ChecklistOutput> {
@@ -56,21 +57,32 @@ export class ChecklistAdapter {
       const SUPABASE_URL = "https://hzpycmczwkwbfrqzvfyz.supabase.co/rest/v1";
       const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6cHljbWN6d2t3YmZycXp2Znl6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4Mjc0MjgsImV4cCI6MjA5MTQwMzQyOH0.QSYb5PPqmlmRLL6URrjStNZhPgsW5s0IxnTWD-EEinM";
 
-      // Mapeo: country code -> country_id
-      const COUNTRY_ID_MAP: Record<Country, number> = { PE: 1, CO: 2, MX: 3 };
       const countryId = COUNTRY_ID_MAP[pais];
+      const dateFilter = buildDateRangeFilter(semana);
 
+      // Obtener platos disponibles esa semana
       const response = await fetch(
         `${SUPABASE_URL}/meals?select=meal_id,meal_name,protein_type,is_star,protein_gr&country_id=eq.${countryId}&limit=500`,
-        { headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` } }
+        {
+          headers: {
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+          },
+        }
       );
 
       if (!response.ok) return [];
       const meals = await response.json();
 
+      // Obtener feedback solo de esa semana (meal_feedbacks puede tener order_date)
       const feedbackResponse = await fetch(
-        `${SUPABASE_URL}/meal_feedbacks?select=meal_id,rating&limit=5000`,
-        { headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` } }
+        `${SUPABASE_URL}/meal_feedbacks?select=meal_id,rating${dateFilter}&limit=5000`,
+        {
+          headers: {
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+          },
+        }
       );
 
       const feedbacks = feedbackResponse.ok ? await feedbackResponse.json() : [];
@@ -86,7 +98,8 @@ export class ChecklistAdapter {
         proteina: m.protein_type,
         es_estrella: m.is_star,
         calificacion_promedio: ratingsByMeal[m.meal_id]
-          ? ratingsByMeal[m.meal_id].reduce((a: number, b: number) => a + b, 0) / ratingsByMeal[m.meal_id].length
+          ? ratingsByMeal[m.meal_id].reduce((a: number, b: number) => a + b, 0) /
+            ratingsByMeal[m.meal_id].length
           : 0,
         proteina_gr: m.protein_gr,
       }));
