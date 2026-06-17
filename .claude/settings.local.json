@@ -1,10 +1,11 @@
 {
-  "enabledPlugins": {
-    "mv-dev@manzanaverde-plugins": true
-  },
   "permissions": {
     "allow": [
-      "PowerShell(npm run build --workspace=@mv-quejas/backend)"
+      "PowerShell(npm run build --workspace=@mv-quejas/backend)",
+      "mcp__claude_ai_Notion__notion-search"
     ]
+  },
+  "enabledPlugins": {
+    "mv-dev@manzanaverde-plugins": true
   }
 }
