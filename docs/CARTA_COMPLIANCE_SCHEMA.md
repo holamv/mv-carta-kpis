@@ -3,7 +3,7 @@
 **Proyecto**: `hzpycmczwkwbfrqzvfyz`  
 **Fuente**: Node script `scripts/build-carta-compliance.mjs` (semanal)
 
-## 3 Tablas Principales
+## 4 Tablas Principales (Data Lake)
 
 ### 1. `carta_compliance` — % Cumplimiento por ciudad
 
@@ -54,6 +54,47 @@ ORDER BY weeks_consecutive DESC;
 - `weeks_consecutive` — semanas consecutivas en top-5
 - `weeks_total` — total de semanas en top-5 (últimas 6 semanas)
 - `city` — ciudad
+
+### 4. `carta_availability` — Disponibilidad por Cocina (Catering)
+
+```sql
+-- Disponibilidad por cocina
+SELECT city, catering_name, catering_level, disponibles, carta_total, disponibilidad_pct
+FROM carta_availability 
+WHERE semana_id='242026' 
+ORDER BY disponibilidad_pct DESC;
+
+-- Promedio por ciudad (solo Level A+B = "always on")
+SELECT city, ROUND(AVG(disponibilidad_pct),1) avg_disp, COUNT(*) cocinas
+FROM carta_availability 
+WHERE semana_id='242026' AND catering_level IN ('A','B')
+GROUP BY city;
+```
+
+**Campos**:
+- `city` — ciudad
+- `catering_name` — nombre de la cocina (catering)
+- `catering_level` — nivel operativo (A=always on, B=always on, C=seasonal)
+- `disponibles` — platos producidos (daily_cooked_weight_details) OR vendidos (order_details) en la semana
+- `carta_total` — total de platos en la carta de esa ciudad
+- `disponibilidad_pct` — porcentaje: disponibles / carta_total * 100
+- `semana_id` — formato 'WWYYYY' (W242026 = semana 24, 2026)
+
+**Cálculo**:
+```
+disponibilidad_pct = (disponibles / carta_total) * 100
+
+Disponible = plato producido (daily_cooked_weight_details) 
+          OR plato vendido (order_details) 
+          en la semana cerrada anterior
+```
+
+**Notas**:
+- ⚠️ Mide sobre la **semana anterior cerrada** (no a mitad de semana, para evitar subestimar producción)
+- 🔧 Solo cocinas activas: `caterings.delete=0` (~17 cocinas)
+- 📊 La carta es **por ciudad**, no por cocina (todos los caterings de una ciudad comparten la misma carta)
+- 🔴 Cocina en 0% = no produjo ni vendió esa semana (recién abierta, inactiva, o con disponibilidad limitada)
+- 🔄 Filtro "always on": `catering_level IN ('A', 'B')`
 
 ---
 
@@ -168,13 +209,19 @@ COUNT(DISTINCT CASE WHEN has_snack=true THEN order_id END) /
 
 ---
 
-## Refresh Script
+## Refresh Scripts
 
+### 1. Compliance Rules
 ```bash
 node scripts/build-carta-compliance.mjs
 ```
+Popula `carta_compliance`, `carta_compliance_meals`, `star_plates_weekly` (semanal)
 
-Runs weekly. Populates tables for `semana_id` based on current week.
+### 2. Kitchen Availability
+```bash
+node scripts/build-carta-availability.mjs
+```
+Popula `carta_availability` (semanal, mide sobre semana anterior cerrada)
 
 ---
 

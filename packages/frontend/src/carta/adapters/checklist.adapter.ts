@@ -56,8 +56,12 @@ export class ChecklistAdapter {
       const SUPABASE_URL = "https://hzpycmczwkwbfrqzvfyz.supabase.co/rest/v1";
       const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6cHljbWN6d2t3YmZycXp2Znl6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4Mjc0MjgsImV4cCI6MjA5MTQwMzQyOH0.QSYb5PPqmlmRLL6URrjStNZhPgsW5s0IxnTWD-EEinM";
 
+      // Mapeo: country code -> country_id
+      const COUNTRY_ID_MAP: Record<Country, number> = { PE: 1, CO: 2, MX: 3 };
+      const countryId = COUNTRY_ID_MAP[pais];
+
       const response = await fetch(
-        `${SUPABASE_URL}/meals?select=meal_id,meal_name,protein_type,is_star,protein_gr&country=eq.${pais}&limit=500`,
+        `${SUPABASE_URL}/meals?select=meal_id,meal_name,protein_type,is_star,protein_gr&country_id=eq.${countryId}&limit=500`,
         { headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` } }
       );
 
