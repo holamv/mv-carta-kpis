@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { getCurrentWeek, getPreviousWeek } from '@/carta/utils';
@@ -20,7 +20,51 @@ export default function CartaPage() {
   const [ciudad, setCiudad] = useState('');
   const [semanaSeleccionada, setSemanaSeleccionada] = useState(getCurrentWeek());
 
+  // Estado para tablas de datos
+  const [topMeals, setTopMeals] = useState<any[]>([]);
+  const [foodcostByCountry, setFoodcostByCountry] = useState<any[]>([]);
+  const [complianceByCity, setComplianceByCity] = useState<any[]>([]);
+  const [availabilityByKitchen, setAvailabilityByKitchen] = useState<any[]>([]);
+  const [loadingTables, setLoadingTables] = useState(false);
+
   const ciudadesDisponibles = useMemo(() => CIUDADES_POR_PAIS[pais], [pais]);
+
+  // Cargar tablas de datos
+  useEffect(() => {
+    const loadTables = async () => {
+      setLoadingTables(true);
+      try {
+        const [mealsRes, foodcostRes, complianceRes, availabilityRes] = await Promise.all([
+          fetch(`/api/carta/data/top-meals?country=${pais}`),
+          fetch('/api/carta/data/foodcost-by-country'),
+          fetch(`/api/carta/data/compliance-by-city?semana_id=252026`),
+          fetch(`/api/carta/data/availability-by-kitchen?semana_id=242026`),
+        ]);
+
+        if (mealsRes.ok) {
+          const data = await mealsRes.json();
+          setTopMeals(data.data || []);
+        }
+        if (foodcostRes.ok) {
+          const data = await foodcostRes.json();
+          setFoodcostByCountry(data.data || []);
+        }
+        if (complianceRes.ok) {
+          const data = await complianceRes.json();
+          setComplianceByCity(data.data || []);
+        }
+        if (availabilityRes.ok) {
+          const data = await availabilityRes.json();
+          setAvailabilityByKitchen(data.data || []);
+        }
+      } catch (err) {
+        console.error('Error loading tables:', err);
+      } finally {
+        setLoadingTables(false);
+      }
+    };
+    loadTables();
+  }, [pais]);
 
   const handleSemanaAnterior = () => {
     setSemanaSeleccionada(getPreviousWeek(semanaSeleccionada));
@@ -265,6 +309,158 @@ export default function CartaPage() {
           </Card>
         </div>
       )}
+
+      {/* Tablas de datos reales */}
+      <div className="mt-12 space-y-6">
+        <h2 className="font-heading text-2xl font-bold text-mv-green-dark mb-6">📊 Dashboard de Datos (Menú Diario)</h2>
+
+        {/* Top Platos Vendidos */}
+        <Card className="p-6">
+          <h3 className="font-heading font-semibold mb-4">🍽️ Top Platos Vendidos ({pais})</h3>
+          {loadingTables ? (
+            <p className="text-mv-gray-600">Cargando...</p>
+          ) : topMeals.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b bg-mv-gray-100">
+                    <th className="text-left p-2">Plato</th>
+                    <th className="text-right p-2">Unidades</th>
+                    <th className="text-right p-2">Rating</th>
+                    <th className="text-right p-2">Foodcost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topMeals.map((meal, i) => (
+                    <tr key={i} className="border-b hover:bg-mv-gray-50">
+                      <td className="p-2 font-medium">{meal.meal_name}</td>
+                      <td className="text-right p-2">{meal.unidades.toLocaleString()}</td>
+                      <td className="text-right p-2">{meal.rating ? `${meal.rating} ⭐` : '—'}</td>
+                      <td className="text-right p-2 font-semibold">{meal.foodcost_pct}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-mv-gray-600">Sin datos disponibles</p>
+          )}
+        </Card>
+
+        {/* Foodcost por País */}
+        <Card className="p-6">
+          <h3 className="font-heading font-semibold mb-4">💰 Foodcost Teórico por País</h3>
+          {loadingTables ? (
+            <p className="text-mv-gray-600">Cargando...</p>
+          ) : foodcostByCountry.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {foodcostByCountry.map((country, i) => (
+                <div key={i} className="border rounded p-4 bg-mv-gray-50">
+                  <p className="font-semibold text-lg mb-2">{country.country_code}</p>
+                  <div className="mb-3">
+                    <p className="text-xs text-mv-gray-600">Costo total</p>
+                    <p className="text-lg font-semibold">{country.currency}{country.total_costo.toLocaleString()}</p>
+                  </div>
+                  <div className="mb-3">
+                    <p className="text-xs text-mv-gray-600">Precio total</p>
+                    <p className="text-lg font-semibold">{country.currency}{country.total_precio.toLocaleString()}</p>
+                  </div>
+                  <div className="pt-3 border-t">
+                    <p className="text-xs text-mv-gray-600">Foodcost</p>
+                    <p className="text-2xl font-bold text-mv-green-dark">{country.foodcost_pct}%</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-mv-gray-600">Sin datos disponibles</p>
+          )}
+        </Card>
+
+        {/* Cumplimiento de Carta por Ciudad */}
+        <Card className="p-6">
+          <h3 className="font-heading font-semibold mb-4">✅ Cumplimiento de Carta por Ciudad</h3>
+          {loadingTables ? (
+            <p className="text-mv-gray-600">Cargando...</p>
+          ) : complianceByCity.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b bg-mv-gray-100">
+                    <th className="text-left p-2">Ciudad</th>
+                    <th className="text-center p-2">Compliance</th>
+                    <th className="text-center p-2">Carne</th>
+                    <th className="text-center p-2">Cerdo</th>
+                    <th className="text-center p-2">Pescado</th>
+                    <th className="text-center p-2">Estrella</th>
+                    <th className="text-center p-2">Ensalada %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {complianceByCity.map((city, i) => (
+                    <tr key={i} className="border-b hover:bg-mv-gray-50">
+                      <td className="p-2 font-medium">{city.city}</td>
+                      <td className="text-center p-2">
+                        <span className="font-bold">{city.compliance_pct}%</span>
+                      </td>
+                      <td className="text-center p-2">{city.variedad_carne?.pass ? '✅' : '❌'}</td>
+                      <td className="text-center p-2">{city.variedad_cerdo?.pass ? '✅' : '❌'}</td>
+                      <td className="text-center p-2">{city.variedad_pescado?.pass ? '✅' : '❌'}</td>
+                      <td className="text-center p-2 text-xs">{city.estrella_en_carta?.detail}</td>
+                      <td className="text-center p-2 text-xs">{city.ensalada_share?.detail}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-mv-gray-600">Sin datos disponibles</p>
+          )}
+        </Card>
+
+        {/* Disponibilidad por Cocina */}
+        <Card className="p-6">
+          <h3 className="font-heading font-semibold mb-4">🍳 Disponibilidad por Cocina (Level A+B)</h3>
+          {loadingTables ? (
+            <p className="text-mv-gray-600">Cargando...</p>
+          ) : availabilityByKitchen.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b bg-mv-gray-100">
+                    <th className="text-left p-2">Ciudad</th>
+                    <th className="text-left p-2">Cocina</th>
+                    <th className="text-center p-2">Nivel</th>
+                    <th className="text-right p-2">Disponibles</th>
+                    <th className="text-right p-2">Carta Total</th>
+                    <th className="text-right p-2">Disponibilidad %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {availabilityByKitchen.map((kitchen, i) => (
+                    <tr key={i} className="border-b hover:bg-mv-gray-50">
+                      <td className="p-2">{kitchen.city}</td>
+                      <td className="p-2 font-medium">{kitchen.catering_name}</td>
+                      <td className="text-center p-2">
+                        <span className="bg-mv-green-pale px-2 py-1 rounded text-xs font-semibold">
+                          {kitchen.level}
+                        </span>
+                      </td>
+                      <td className="text-right p-2">{kitchen.disponibles}</td>
+                      <td className="text-right p-2">{kitchen.carta_total}</td>
+                      <td className="text-right p-2 font-semibold text-mv-green-dark">
+                        {kitchen.disponibilidad_pct}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-mv-gray-600">Sin datos disponibles</p>
+          )}
+        </Card>
+      </div>
     </main>
   );
 }
