@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "PowerShell(npm run build --workspace=@mv-quejas/backend)",
-      "mcp__claude_ai_Notion__notion-search"
+      "mcp__claude_ai_Notion__notion-search",
+      "Bash(npm run *)",
+      "Bash(npm test *)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(curl -s http://localhost:3000/api/health)"
     ]
   },
   "enabledPlugins": {

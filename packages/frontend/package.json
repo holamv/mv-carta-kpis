@@ -1,10 +1,9 @@
 {
-  "name": "@mv-quejas/frontend",
-  "version": "0.1.0",
+  "name": "mv-carta-kpis-frontend",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "tsc -p ../shared",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -13,7 +12,6 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@mv-quejas/shared": "*",
     "clsx": "^2.1.1",
     "lucide-react": "^0.427.0",
     "mysql2": "^3.10.0",

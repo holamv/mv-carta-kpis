@@ -1,26 +1,19 @@
 {
-  "name": "mv-quejas",
-  "version": "0.1.0",
+  "name": "mv-carta-kpis",
+  "version": "1.0.0",
   "private": true,
-  "description": "Sistema de quejas y reclamos de Manzana Verde",
+  "description": "Motor de calculo y reporte semanal automatico de KPIs de carta para Manzana Verde",
   "workspaces": [
-    "packages/*"
+    "packages/frontend"
   ],
   "scripts": {
-    "predev": "npm run build --workspace=packages/shared",
-    "dev": "concurrently -n backend,frontend -c blue,green \"npm run dev --workspace=packages/backend\" \"npm run dev --workspace=packages/frontend\"",
-    "predev:frontend": "npm run build --workspace=packages/shared",
+    "dev": "npm run dev --workspace=packages/frontend",
     "dev:frontend": "npm run dev --workspace=packages/frontend",
-    "predev:backend": "npm run build --workspace=packages/shared",
-    "dev:backend": "npm run dev --workspace=packages/backend",
-    "build": "npm run build --workspace=packages/shared && npm run build --workspace=packages/backend && npm run build --workspace=packages/frontend",
+    "build": "npm run build --workspace=packages/frontend",
     "test": "npm test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present"
   },
   "engines": {
     "node": ">=18.18.0"
-  },
-  "devDependencies": {
-    "concurrently": "^10.0.3"
   }
 }

@@ -1,108 +1,227 @@
-# PROJECT SCOPE — mv-quejas + módulo Carta
+# PROJECT SCOPE — mv-carta-kpis
 
 ## Resumen
-Sistema de quejas y reclamos de Manzana Verde con dos módulos independientes:
-1. **Quejas**: Formulario público para reporte de quejas persistidas en MySQL.
-2. **Carta**: Reporte semanal de KPIs del menú con 5 secciones de análisis (disponibilidad, foodcost, platos nuevos, checklist, mystery orders).
 
-## Módulo 1: Quejas
-### Funcionalidades
-- ✅ Formulario público de envío de quejas (frontend)
-- ✅ Validación de datos en cliente y servidor (Zod, schema compartido)
-- ✅ API REST para crear, listar y obtener quejas (backend)
-- ✅ Persistencia en MySQL con queries parametrizados
-- 🚧 Panel interno de gestión de quejas (listado/filtros/cambio de estado)
-- ❌ Notificaciones por email al recibir una queja
-- ❌ Autenticación para el panel interno
+**Proyecto Principal:** Motor de cálculo y reporte semanal automático de KPIs de carta para Manzana Verde.
 
-## Módulo 2: Carta (Reporte Semanal de KPIs)
-### Estructura y Funcionalidades
-El módulo vive de forma **completamente independiente** bajo `src/carta/*` (lógica) + `src/app/carta` + `src/app/api/carta` (UI y rutas).
+**Objetivo:** Automatizar la recopilación y consolidación de los KPIs semanales de carta (disponibilidad, foodcost teórico, platos nuevos, checklist de carta), eliminando la actualización manual de 4-5 sheets y centralizando la visibilidad en el Dashboard de Operaciones.
 
-#### 5 Secciones del Reporte
-1. **Disponibilidad**: Porcentaje de platos activos por tienda, ciudad y país. Top platos apagados.
-2. **Foodcost Teórico**: Comparación de foodcost % vs. umbral de alerta (40%) entre semanas actuales/previas.
-3. **Platos Nuevos**: Performance de lanzamientos: unidades vendidas, foodcost real, rating promedio.
-4. **Checklist de Carta**: Cumplimiento % ponderado por reglas de variedad proteínica, pesos, etc. Alertas accionables.
-5. **Mystery Orders**: Status de ordenes mystery (pendiente integración).
+**Usuario final:** Equipo de Operaciones (DRI de carta), visible para todas las áreas.
 
-#### Archivos Construidos
+**Frecuencia:** Semanal, generado a demanda con un botón.
+
+---
+
+## CORE: Capa de Cálculo Puro (100% COMPLETADO)
+
+**Estado:** ✅ 23/23 tests pasando, 100% funcional
+
+### 5 Motors de Cálculo
+
+1. **ChecklistValidator** (14 tests)
+   - Valida 5 reglas críticas de carta
+   - Calificación >= 4.65, variedad mínima, rotación, pollo, pesos
+   - Output: cumplimiento %, alertas por regla
+
+2. **AvailabilityCalculator** (3 tests)
+   - % disponibilidad por tienda, ciudad, país
+   - Alertas si < 70%
+
+3. **FoodcostCalculator** (2 tests)
+   - Comparativo semana actual vs anterior
+   - Alerta si diferencia > 40%
+
+4. **NuevosPlatosAnalyzer** (2 tests)
+   - Identifica platos lanzados (últimos 7 días)
+   - Clasifica performance (arriba/normal/abajo promedio)
+
+5. **ReportConsolidator** (2 tests)
+   - Orquesta los 4 anteriores
+   - Genera resumen ejecutivo con status (BUENO/ALERTA/CRITICO)
+
+### Características
+- ✅ Determinísticos (misma entrada = misma salida)
+- ✅ Sin side effects (no modifican estado global)
+- ✅ Independientes (cada motor funciona aislado)
+- ✅ TypeScript strict, interfaces claras
+- ✅ 23 tests cubriendo casos de éxito y edge cases
+- ✅ Documentación matemática de cada regla
+
+---
+
+## Funcionalidades
+
+### 1. Disponibilidad de Carta
+- % de disponibilidad de platos por tienda
+- Agregable por ciudad y país
+- Top de platos apagados en la semana
+
+### 2. Foodcost Teórico
+- Comparativo semanal actual vs semana anterior
+- Alerta si diferencia > 40%
+
+### 3. Platos Nuevos Lanzados
+- Listado de platos lanzados en la semana
+- Con ventas, foodcost real y calificación
+
+### 4. Checklist de Carta Automatizado
+- Calificación promedio por plato < 4.65 → alertar
+- Variedad mínima: PE/CO (2 carne, 2 cerdo, 2 pescado, 4 estrella); MX (3 carne, 2 cerdo, 2 pescado, 3 estrella)
+- Rotación: platos estrella >= 2 semanas, demás >= 4 semanas
+- Frecuencia máxima pollo: 7/semana PE/CO, 6/semana MX
+- Pesos mínimos (600kcal: 350g, 70g proteína, 80g verduras, 140g arroz)
+- % cumplimiento general por país
+
+### 5. Mystery Orders Pass Rate
+- Sección "Pendiente de integración"
+- Por confirmar acceso con Jonathan
+
+---
+
+## Estructura de Archivos
+
 ```
-packages/frontend/src/carta/
-├── types.ts                    # Tipos de dominio (CountryCode, Proteina, todos los interfaces)
-├── mockData.ts                 # Generador de datos mock (generateMockReport)
-├── service.ts                  # getWeeklyCartaReport() — exporta respuesta ApiResponse<WeeklyCartaReport>
-└── components/
-    ├── Availability.tsx        # Sección 1: disponibilidad general y top off meals
-    ├── Foodcost.tsx            # Sección 2: comparación foodcost vs umbral
-    ├── NewMeals.tsx            # Sección 3: performance de platos nuevos
-    ├── Checklist.tsx           # Sección 4: cumplimiento % por país
-    └── Mystery.tsx             # Sección 5: status mystery orders
-
-packages/frontend/src/app/
-├── api/carta/route.ts          # Endpoint GET /api/carta (devuelve mock vía service)
-└── carta/page.tsx              # Página /carta (client component, fetch + renderiza secciones)
-```
-
-#### Datos Mock
-- Utilizan tipos de `WeeklyCartaReport` sin datos reales conectados.
-- Generan reportes con país PE, tiendas en Lima, varios platos, reglas de checklist.
-- API `/api/carta` devuelve siempre mock; ideal para prototipado.
-
-## Estructura General de Archivos
-```
-mv-quejas/
+mv-carta-kpis/
 ├── packages/
-│   ├── shared/           # Tipos + schemas Zod (Queja, CrearQuejaInput, ApiResponse)
-│   ├── backend/          # Express API (quejas, DB, controllers)
-│   └── frontend/         # Next.js App Router
-│       ├── src/
-│       │   ├── app/      # Rutas y páginas (/, /carta)
-│       │   ├── carta/    # Módulo independiente (tipos, mock, servicio)
-│       │   └── components/
-│       └── tests/        # E2E tests
-└── docs/                 # Documentación (esta, ARCHITECTURE, COMPONENTS, etc.)
+│   └── frontend/         # Next.js 15 App Router
+│       └── src/
+│           ├── app/
+│           │   ├── page.tsx                # Redirige a /carta
+│           │   ├── layout.tsx              # Root layout con fonts MV
+│           │   ├── globals.css             # Tokens MV (Tailwind v4)
+│           │   ├── carta/
+│           │   │   └── page.tsx            # Página de reporte
+│           │   └── api/
+│           │       └── carta/
+│           │           ├── reporte/
+│           │           ├── disponibilidad/
+│           │           ├── foodcost/
+│           │           ├── checklist/
+│           │           ├── platos-nuevos/
+│           │           └── mystery/
+│           ├── components/
+│           │   └── ui/
+│           │       ├── Button.tsx
+│           │       └── Card.tsx
+│           ├── carta/
+│           │   ├── types.ts                # Tipos de dominio
+│           │   ├── config.ts               # Reglas por país
+│           │   ├── utils.ts                # Utilidades (semana ISO, helpers)
+│           │   └── calculations/
+│           │       ├── types.ts            # Interfaces entrada/salida
+│           │       ├── checklist.validator.ts
+│           │       ├── availability.calculator.ts
+│           │       ├── foodcost.calculator.ts
+│           │       ├── nuevos-platos.analyzer.ts
+│           │       ├── report.consolidator.ts
+│           │       └── __tests__/
+│           │           ├── checklist.validator.test.ts (14 tests)
+│           │           ├── availability.calculator.test.ts (3 tests)
+│           │           ├── foodcost.calculator.test.ts (2 tests)
+│           │           ├── nuevos-platos.analyzer.test.ts (2 tests)
+│           │           └── report.consolidator.test.ts (2 tests)
+│           └── lib/
+│               ├── api.ts                  # Cliente API
+│               └── (clientes de datos)     # Nuevos: mysql2, Supabase, sheets
+├── config/
+│   └── meal_classification.json            # Catálogo editable de platos
+├── docs/
+│   ├── PROJECT_SCOPE.md                    # Esta doc
+│   └── CALCULATION_RULES.md                # Especificación matemática
+└── .env.example                            # Variables de entorno
 ```
 
-## APIs Consumidas Actualmente
-- API propia del backend (`/api/quejas`).
-- Endpoint local del frontend (`/api/carta` mock).
+---
 
-## Puntos Pendientes
+## Stack
 
-### Carta — Integraciones Reales
-- **FlowMaster + Dashboard Ops**: Integrar reporte semanal con dashboard de operaciones FlowMaster. Posible punto de entrada: `/admin/carta` o widget embedded.
-- **Conexión Real a APIs/Datalake**: Reemplazar `generateMockReport()` con llamadas reales a:
-  - Datalake de disponibilidad (cocina/POS)
-  - BD de foodcost teórico
-  - Sheet de ventas y ratings
-  - Sheet "Check List Lanzamiento Carta Foodcourt" para mystery orders
-- **Mystery Orders**: Integración con sheet "Check List Lanzamiento Carta Foodcourt"; actualmente enum `pending_integration`.
-- **Regla: % de Frecuencia con Marcado Rojo**: Implementar lógica de regla que evalúe frecuencia de platos y marque en rojo aquellos que superen umbral o fallen checklist.
+- **Framework:** Next.js 15 (App Router)
+- **UI/React:** React 19, TypeScript strict, Tailwind CSS v4 (tokens MV)
+- **Gráficos:** Recharts ^2.10.0
+- **Testing:** Vitest ^2.0.5 (23 tests, 100% pasando)
+- **Bases de datos:** mysql2 (read-only réplica), Supabase PostgREST (datalake)
+- **Componentes:** Lucide React (iconos), componentes UI propios
 
-### Carta — Mejoras de UX/Styling
-- Mejorar componentes con Tailwind + tokens MV (colores, tipografía).
-- Agregar gráficos (disponibilidad % por tienda, línea de foodcost en el tiempo).
-- Vistas filtradas por país, ciudad, tienda.
-- Exportación a PDF o email semanal.
-
-### Quejas — Completar
-- Configurar `.env.example` con todas las variables.
-- Panel interno de gestión (tablas, filtros, cambio de estado).
-- Notificaciones por email.
-- Autenticación para panel interno.
-
-## Dependencias Clave
-- **Frontend**: next 15, react 19, tailwindcss v4, zod, clsx, lucide-react
-- **Backend**: express, mysql2, zod, helmet, cors, dotenv
-- **Shared**: zod
+---
 
 ## Variables de Entorno
-- Frontend: `NEXT_PUBLIC_API_URL`
-- Backend: `PORT`, `CORS_ORIGIN`, `DB_ACCESS_*`
 
-## Estado (2026-06-15)
-- ✅ Módulo Carta: estructura, tipos, 5 secciones con mock, componentes y página accesible en `/carta`.
-- ✅ Endpoint `/api/carta` funcional con datos mock.
-- 🚧 Módulo Quejas: scaffold inicial; pendiente completar panel y configurar BD.
-- 📋 Próxima reunión con Operaciones para definir ubicación final de Carta (FlowMaster vs. sitio independiente).
+```
+NEXT_PUBLIC_API_URL=http://localhost:3000/api
+
+# MySQL (read-only réplica)
+DB_ACCESS_HOST=
+DB_ACCESS_PORT=3306
+DB_ACCESS_USER=
+DB_ACCESS_PASSWORD=
+DB_ACCESS_NAME=
+DB_ACCESS_TYPE=mysql
+
+# Supabase (datalake read-only)
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+
+# Carta Module
+N8N_API_KEY=
+GOOGLE_SHEETS_API_KEY=
+BACKEND_METRIC_FOODCOURT_URL=https://backend.manzanaverde.la/metric/foodcourt
+BACKEND_RENDIMIENTO_ALIMENTOS_URL=https://backend.manzanaverde.la/rendimiento/alimentos
+```
+
+---
+
+## Estado de Implementación
+
+### Capa de Cálculo ✅ (100% COMPLETADO)
+- [x] 5 motors de cálculo puro
+- [x] 23 tests unitarios (100% pasando)
+- [x] Especificación matemática documentada
+- [x] Interfaces tipadas (entrada/salida claras)
+
+### Próximas Fases (Opcionales)
+- [ ] Clientes de datos read-only (mysql2, Supabase, APIs, Google Sheets)
+- [ ] Adaptadores de datos por sección
+- [ ] Route handlers `/api/carta/*` (disponibilidad, foodcost, checklist, etc.)
+- [ ] Componentes UI (tablas, gráficos Recharts, alertas)
+- [ ] Página `/carta` completa con filtros y secciones
+- [ ] Integración de mystery orders
+
+### Fuera de Alcance v1
+- Validación de fotos, empaque, composición nutricional
+- Flujo de aprobación Jonathan-Ops-Carlos
+- Sincronización automática con sheets
+
+---
+
+## Cómo Ejecutar
+
+```bash
+# Install deps
+npm install
+
+# Tests de la capa de cálculo
+npm test -- src/carta/calculations/__tests__/
+
+# Dev server
+npm run dev
+# Abre http://localhost:3000 (redirige a /carta)
+
+# Build
+npm run build
+npm start
+```
+
+---
+
+## Notas Técnicas
+
+- **BD MySQL:** Réplica de solo lectura. Pool de 5 conexiones. Queries livianos, siempre parametrizados.
+- **Datalake:** Supabase con histórico S10-S19-2026 (10 semanas).
+- **Semana ISO:** Formato WWYYYY (ej: 192026 = semana 19 de 2026).
+- **Configuración de platos:** Editar `config/meal_classification.json` para actualizar lista de platos estrella y proteínas.
+
+---
+
+*Proyecto: mv-carta-kpis*
+*Generado: 2026-06-14*
+*Estado: Core completado (capa de cálculo 100% testeada)*

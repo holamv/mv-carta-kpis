@@ -1,0 +1,33 @@
+{
+  "clasificaciones": [
+    {
+      "meal_id": 1,
+      "nombre": "Pollo a la Plancha",
+      "proteina": "pollo",
+      "es_estrella": true,
+      "fecha_lanzamiento": "2025-01-15"
+    },
+    {
+      "meal_id": 2,
+      "nombre": "Salmón Teriyaki",
+      "proteina": "pescado",
+      "es_estrella": true,
+      "fecha_lanzamiento": "2025-02-01"
+    },
+    {
+      "meal_id": 3,
+      "nombre": "Lomo Saltado",
+      "proteina": "carne",
+      "es_estrella": true,
+      "fecha_lanzamiento": "2025-01-20"
+    },
+    {
+      "meal_id": 4,
+      "nombre": "Costillas BBQ",
+      "proteina": "cerdo",
+      "es_estrella": true,
+      "fecha_lanzamiento": "2025-02-10"
+    }
+  ],
+  "_comentario": "Editar manualmente para actualizar clasificación de platos. meal_id debe coincidir con DB. es_estrella=true requiere aprobación de CEO si se cambia."
+}
