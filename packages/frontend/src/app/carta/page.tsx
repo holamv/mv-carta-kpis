@@ -25,6 +25,8 @@ export default function CartaPage() {
   const [foodcostByCountry, setFoodcostByCountry] = useState<any[]>([]);
   const [complianceByCity, setComplianceByCity] = useState<any[]>([]);
   const [availabilityByKitchen, setAvailabilityByKitchen] = useState<any[]>([]);
+  const [foodcostByPlate, setFoodcostByPlate] = useState<any[]>([]);
+  const [complianceDetails, setComplianceDetails] = useState<any[]>([]);
   const [loadingTables, setLoadingTables] = useState(false);
 
   const ciudadesDisponibles = useMemo(() => CIUDADES_POR_PAIS[pais], [pais]);
@@ -34,11 +36,13 @@ export default function CartaPage() {
     const loadTables = async () => {
       setLoadingTables(true);
       try {
-        const [mealsRes, foodcostRes, complianceRes, availabilityRes] = await Promise.all([
+        const [mealsRes, foodcostRes, complianceRes, availabilityRes, foodcostPlateRes, complianceDetailsRes] = await Promise.all([
           fetch(`/api/carta/data/top-meals?country=${pais}`),
           fetch('/api/carta/data/foodcost-by-country'),
           fetch(`/api/carta/data/compliance-by-city?semana_id=252026`),
           fetch(`/api/carta/data/availability-by-kitchen?semana_id=242026`),
+          fetch(`/api/carta/data/foodcost-details?type=by_plate`),
+          fetch(`/api/carta/data/compliance-details?type=rules_by_city&semana_id=252026`),
         ]);
 
         if (mealsRes.ok) {
@@ -56,6 +60,14 @@ export default function CartaPage() {
         if (availabilityRes.ok) {
           const data = await availabilityRes.json();
           setAvailabilityByKitchen(data.data || []);
+        }
+        if (foodcostPlateRes.ok) {
+          const data = await foodcostPlateRes.json();
+          setFoodcostByPlate((data.data || []).slice(0, 10));
+        }
+        if (complianceDetailsRes.ok) {
+          const data = await complianceDetailsRes.json();
+          setComplianceDetails(data.data || []);
         }
       } catch (err) {
         console.error('Error loading tables:', err);
@@ -455,6 +467,66 @@ export default function CartaPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          ) : (
+            <p className="text-mv-gray-600">Sin datos disponibles</p>
+          )}
+        </Card>
+
+        {/* Foodcost por Plato */}
+        <Card className="p-6">
+          <h3 className="font-heading font-semibold mb-4">💰 Foodcost por Plato (Top 10)</h3>
+          {loadingTables ? (
+            <p className="text-mv-gray-600">Cargando...</p>
+          ) : foodcostByPlate.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b bg-mv-gray-100">
+                    <th className="text-left p-2">Plato</th>
+                    <th className="text-right p-2">Foodcost %</th>
+                    <th className="text-right p-2">Costo Local</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {foodcostByPlate.map((plate, i) => (
+                    <tr key={i} className="border-b hover:bg-mv-gray-50">
+                      <td className="p-2 font-medium">{plate.meal_name}</td>
+                      <td className="text-right p-2 font-semibold">{plate.food_cost_pct}%</td>
+                      <td className="text-right p-2">{plate.food_cost_local}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-mv-gray-600">Sin datos disponibles</p>
+          )}
+        </Card>
+
+        {/* Compliance Rules Detail */}
+        <Card className="p-6">
+          <h3 className="font-heading font-semibold mb-4">📋 Detalle de Reglas por Ciudad (W252026)</h3>
+          {loadingTables ? (
+            <p className="text-mv-gray-600">Cargando...</p>
+          ) : complianceDetails.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4">
+              {complianceDetails.map((city, i) => (
+                <div key={i} className="border rounded p-4 bg-mv-gray-50">
+                  <div className="flex justify-between items-start mb-3">
+                    <h4 className="font-semibold text-mv-green-dark">{city.city}</h4>
+                    <span className="text-lg font-bold text-mv-green-dark">{city.compliance_pct}%</span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                    {city.rules_detail && Object.entries(city.rules_detail).map(([rule, detail]: [string, any]) => (
+                      <div key={rule} className="flex justify-between">
+                        <span className="text-mv-gray-600">{rule.replace(/_/g, ' ')}</span>
+                        <span className="font-semibold">{detail}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <p className="text-mv-gray-600">Sin datos disponibles</p>
