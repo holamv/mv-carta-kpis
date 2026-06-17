@@ -36,12 +36,11 @@ export class FoodcostAdapter {
 
   private async getFoodcostForSemana(semana: string): Promise<Record<Country, number>> {
     try {
-      // NOTA: costo_teorico_local está en NULL en meal_orders_daily
-      // Fallback: usar food_cost_pct de meals (es estático pero es lo disponible)
-      const countryId = Object.entries(COUNTRY_ID_MAP).find(([_, id]) => id === 1)?.[0];
+      // Filtrar meal_orders_daily por semana (order_date en rango ISO)
+      const dateFilter = buildDateRangeFilter(semana);
 
       const response = await fetch(
-        `${SUPABASE_URL}/meals?select=country_id,food_cost_pct&limit=2000`,
+        `${SUPABASE_URL}/meal_orders_daily?select=country_id,costo_teorico_local,precio_local${dateFilter}&limit=5000`,
         {
           headers: {
             apikey: SUPABASE_KEY,
@@ -55,28 +54,36 @@ export class FoodcostAdapter {
         return { PE: 0, CO: 0, MX: 0 };
       }
 
-      const meals = await response.json();
+      const orders = await response.json();
 
-      // Agrupar por country_id y calcular promedio de food_cost_pct
-      const costByCountry: Record<number, number[]> = { 1: [], 2: [], 3: [] };
+      if (orders.length === 0) {
+        console.warn(`[FoodcostAdapter] No orders found for ${semana}`);
+        return { PE: 0, CO: 0, MX: 0 };
+      }
 
-      meals.forEach((meal: any) => {
-        if (meal.food_cost_pct) {
-          if (!costByCountry[meal.country_id]) {
-            costByCountry[meal.country_id] = [];
-          }
-          costByCountry[meal.country_id].push(meal.food_cost_pct);
+      // Calcular foodcost por país: SUM(costo_teorico_local) / SUM(precio_local) * 100
+      const costByCountry: Record<number, { totalCosto: number; totalPrecio: number }> = {
+        1: { totalCosto: 0, totalPrecio: 0 },
+        2: { totalCosto: 0, totalPrecio: 0 },
+        3: { totalCosto: 0, totalPrecio: 0 },
+      };
+
+      orders.forEach((order: any) => {
+        const countryId = order.country_id;
+        if (costByCountry[countryId]) {
+          costByCountry[countryId].totalCosto += order.costo_teorico_local || 0;
+          costByCountry[countryId].totalPrecio += order.precio_local || 0;
         }
       });
 
-      // Calcular promedio por país
+      // Calcular porcentaje por país
       const result: Record<Country, number> = { PE: 0, CO: 0, MX: 0 };
-      Object.entries(costByCountry).forEach(([countryId, costs]) => {
-        if (costs.length > 0) {
-          const avgCost = costs.reduce((a, b) => a + b, 0) / costs.length;
+      Object.entries(costByCountry).forEach(([countryId, { totalCosto, totalPrecio }]) => {
+        if (totalPrecio > 0) {
+          const pct = (totalCosto / totalPrecio) * 100;
           const countryCode = COUNTRY_ID_MAP[parseInt(countryId)];
           if (countryCode) {
-            result[countryCode] = Math.round(avgCost * 100) / 100;
+            result[countryCode] = Math.round(pct * 100) / 100;
           }
         }
       });
