@@ -17,70 +17,79 @@ export default function CartaPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pais, setPais] = useState<Country>('PE');
-  const [ciudad, setCiudad] = useState('');
+  const [ciudad, setCiudad] = useState('Lima'); // Inicializar con Lima
   const [semanaSeleccionada, setSemanaSeleccionada] = useState(getCurrentWeek());
 
-  // Estado para tablas de datos
-  const [topMeals, setTopMeals] = useState<any[]>([]);
-  const [foodcostByCountry, setFoodcostByCountry] = useState<any[]>([]);
-  const [complianceByCity, setComplianceByCity] = useState<any[]>([]);
-  const [availabilityByKitchen, setAvailabilityByKitchen] = useState<any[]>([]);
-  const [foodcostByPlate, setFoodcostByPlate] = useState<any[]>([]);
-  const [complianceDetails, setComplianceDetails] = useState<any[]>([]);
-  const [loadingTables, setLoadingTables] = useState(false);
 
   const ciudadesDisponibles = useMemo(() => CIUDADES_POR_PAIS[pais], [pais]);
 
-  // Cargar tablas de datos
+  // Cargar dashboard Leo cuando cambias país/ciudad/semana
   useEffect(() => {
-    const loadTables = async () => {
-      setLoadingTables(true);
+    const loadDashboard = async () => {
+      if (!ciudad) return; // Requiere ciudad seleccionada
+
+      setLoading(true);
+      setError(null);
       try {
-        // Convertir W24-2026 a 242026 para endpoints
-        const [weekPart, yearPart] = semanaSeleccionada.split('-');
-        const semanaId = `${weekPart.substring(1)}${yearPart}`;
+        const params = new URLSearchParams();
+        params.append('semana', semanaSeleccionada);
+        params.append('pais', pais);
+        params.append('ciudad', ciudad);
 
-        const [mealsRes, foodcostRes, complianceRes, availabilityRes, foodcostPlateRes, complianceDetailsRes] = await Promise.all([
-          fetch(`/api/carta/data/top-meals?country=${pais}&semana=${semanaSeleccionada}`),
-          fetch('/api/carta/data/foodcost-by-country'),
-          fetch(`/api/carta/data/compliance-by-city?semana_id=${semanaId}`),
-          fetch(`/api/carta/data/availability-by-kitchen?semana_id=${semanaId}`),
-          fetch(`/api/carta/data/foodcost-details?type=by_plate`),
-          fetch(`/api/carta/data/compliance-details?type=rules_by_city&semana_id=${semanaId}`),
-        ]);
+        const response = await fetch(`/api/carta/dashboard/leo?${params}`);
+        const json = await response.json();
 
-        if (mealsRes.ok) {
-          const data = await mealsRes.json();
-          setTopMeals(data.data || []);
+        if (!json.success) {
+          setError(json.error || 'Error cargando dashboard');
+          return;
         }
-        if (foodcostRes.ok) {
-          const data = await foodcostRes.json();
-          setFoodcostByCountry(data.data || []);
-        }
-        if (complianceRes.ok) {
-          const data = await complianceRes.json();
-          setComplianceByCity(data.data || []);
-        }
-        if (availabilityRes.ok) {
-          const data = await availabilityRes.json();
-          setAvailabilityByKitchen(data.data || []);
-        }
-        if (foodcostPlateRes.ok) {
-          const data = await foodcostPlateRes.json();
-          setFoodcostByPlate((data.data || []).slice(0, 10));
-        }
-        if (complianceDetailsRes.ok) {
-          const data = await complianceDetailsRes.json();
-          setComplianceDetails(data.data || []);
-        }
+
+        // Transformar datos del dashboard/leo al formato esperado
+        const dashboardData = json.panels;
+        setReport({
+          semana: semanaSeleccionada,
+          generado_en: new Date().toISOString(),
+          disponibilidad: {
+            alertas: [],
+            datos_tiendas: dashboardData.availability?.map((a: any) => ({
+              tienda_nombre: a.catering_name,
+              ciudad,
+              porcentaje_disponibilidad: Number(a.disponibilidad_pct),
+              platos_activos: a.disponibles,
+              platos_totales: a.carta_total,
+            })) || [],
+          },
+          foodcost: {
+            alertas: [],
+            datos_por_pais: dashboardData.foodcost ? [{
+              pais,
+              semana_actual: Number(dashboardData.foodcost.foodcost_pct),
+              semana_anterior: 0,
+              diferencia_pct: 0,
+              alerta: false,
+            }] : [],
+          },
+          checklist: {
+            cumplimiento_promedio: dashboardData.compliance?.compliance_pct || 0,
+            resultados_por_pais: dashboardData.compliance ? [{
+              pais,
+              cumplimiento_pct: dashboardData.compliance.compliance_pct,
+              alertas: [],
+            }] : [],
+          },
+          platos_nuevos: {
+            platos: dashboardData.topMeals || [],
+          },
+        } as CartaKPIReport);
       } catch (err) {
-        console.error('Error loading tables:', err);
+        console.error('Error loading dashboard:', err);
+        setError(err instanceof Error ? err.message : 'Error desconocido');
       } finally {
-        setLoadingTables(false);
+        setLoading(false);
       }
     };
-    loadTables();
-  }, [pais, semanaSeleccionada]);
+    loadDashboard();
+  }, [pais, ciudad, semanaSeleccionada]);
 
   const handleSemanaAnterior = () => {
     setSemanaSeleccionada(getPreviousWeek(semanaSeleccionada));
@@ -104,30 +113,6 @@ export default function CartaPage() {
     setSemanaSeleccionada(getCurrentWeek());
   };
 
-  const handleGenerateReport = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams();
-      params.append('semana', semanaSeleccionada);
-      if (pais) params.append('pais', pais);
-      if (ciudad) params.append('ciudad', ciudad);
-
-      const response = await fetch(`/api/carta/reporte?${params}`);
-      const json = await response.json();
-
-      if (!json.success) {
-        setError(json.error?.message || 'Error generando reporte');
-        return;
-      }
-
-      setReport(json.data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
@@ -192,9 +177,9 @@ export default function CartaPage() {
               </select>
             </div>
           </div>
-          <Button onClick={handleGenerateReport} disabled={loading}>
-            {loading ? 'Generando...' : 'Generar Reporte Semanal'}
-          </Button>
+          <p className="text-sm text-mv-gray-600">
+            {loading ? '⏳ Cargando dashboard...' : '✅ Dashboard actualizado'}
+          </p>
         </div>
       </Card>
 
@@ -326,217 +311,6 @@ export default function CartaPage() {
         </div>
       )}
 
-      {/* Tablas de datos reales */}
-      <div className="mt-12 space-y-6">
-        <h2 className="font-heading text-2xl font-bold text-mv-green-dark mb-6">📊 Dashboard de Datos (Menú Diario)</h2>
-
-        {/* Top Platos Vendidos */}
-        <Card className="p-6">
-          <h3 className="font-heading font-semibold mb-4">🍽️ Top Platos Vendidos ({pais})</h3>
-          {loadingTables ? (
-            <p className="text-mv-gray-600">Cargando...</p>
-          ) : topMeals.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="border-b bg-mv-gray-100">
-                    <th className="text-left p-2">Plato</th>
-                    <th className="text-right p-2">Unidades</th>
-                    <th className="text-right p-2">Rating</th>
-                    <th className="text-right p-2">Foodcost</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topMeals.map((meal, i) => (
-                    <tr key={i} className="border-b hover:bg-mv-gray-50">
-                      <td className="p-2 font-medium">{meal.meal_name}</td>
-                      <td className="text-right p-2">{meal.unidades.toLocaleString()}</td>
-                      <td className="text-right p-2">{meal.rating ? `${meal.rating} ⭐` : '—'}</td>
-                      <td className="text-right p-2 font-semibold">{meal.foodcost_pct}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-mv-gray-600">Sin datos disponibles</p>
-          )}
-        </Card>
-
-        {/* Foodcost por País */}
-        <Card className="p-6">
-          <h3 className="font-heading font-semibold mb-4">💰 Foodcost Teórico por País</h3>
-          {loadingTables ? (
-            <p className="text-mv-gray-600">Cargando...</p>
-          ) : foodcostByCountry.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {foodcostByCountry.map((country, i) => (
-                <div key={i} className="border rounded p-4 bg-mv-gray-50">
-                  <p className="font-semibold text-lg mb-2">{country.country_code}</p>
-                  <div className="mb-3">
-                    <p className="text-xs text-mv-gray-600">Costo total</p>
-                    <p className="text-lg font-semibold">{country.currency}{country.total_costo.toLocaleString()}</p>
-                  </div>
-                  <div className="mb-3">
-                    <p className="text-xs text-mv-gray-600">Precio total</p>
-                    <p className="text-lg font-semibold">{country.currency}{country.total_precio.toLocaleString()}</p>
-                  </div>
-                  <div className="pt-3 border-t">
-                    <p className="text-xs text-mv-gray-600">Foodcost</p>
-                    <p className="text-2xl font-bold text-mv-green-dark">{country.foodcost_pct}%</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-mv-gray-600">Sin datos disponibles</p>
-          )}
-        </Card>
-
-        {/* Cumplimiento de Carta por Ciudad */}
-        <Card className="p-6">
-          <h3 className="font-heading font-semibold mb-4">✅ Cumplimiento de Carta por Ciudad</h3>
-          {loadingTables ? (
-            <p className="text-mv-gray-600">Cargando...</p>
-          ) : complianceByCity.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="border-b bg-mv-gray-100">
-                    <th className="text-left p-2">Ciudad</th>
-                    <th className="text-center p-2">Compliance</th>
-                    <th className="text-center p-2">Carne</th>
-                    <th className="text-center p-2">Cerdo</th>
-                    <th className="text-center p-2">Pescado</th>
-                    <th className="text-center p-2">Estrella</th>
-                    <th className="text-center p-2">Ensalada %</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {complianceByCity.map((city, i) => (
-                    <tr key={i} className="border-b hover:bg-mv-gray-50">
-                      <td className="p-2 font-medium">{city.city}</td>
-                      <td className="text-center p-2">
-                        <span className="font-bold">{city.compliance_pct}%</span>
-                      </td>
-                      <td className="text-center p-2">{city.variedad_carne?.pass ? '✅' : '❌'}</td>
-                      <td className="text-center p-2">{city.variedad_cerdo?.pass ? '✅' : '❌'}</td>
-                      <td className="text-center p-2">{city.variedad_pescado?.pass ? '✅' : '❌'}</td>
-                      <td className="text-center p-2 text-xs">{city.estrella_en_carta?.detail}</td>
-                      <td className="text-center p-2 text-xs">{city.ensalada_share?.detail}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-mv-gray-600">Sin datos disponibles</p>
-          )}
-        </Card>
-
-        {/* Disponibilidad por Cocina */}
-        <Card className="p-6">
-          <h3 className="font-heading font-semibold mb-4">🍳 Disponibilidad por Cocina (Level A+B)</h3>
-          {loadingTables ? (
-            <p className="text-mv-gray-600">Cargando...</p>
-          ) : availabilityByKitchen.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="border-b bg-mv-gray-100">
-                    <th className="text-left p-2">Ciudad</th>
-                    <th className="text-left p-2">Cocina</th>
-                    <th className="text-center p-2">Nivel</th>
-                    <th className="text-right p-2">Disponibles</th>
-                    <th className="text-right p-2">Carta Total</th>
-                    <th className="text-right p-2">Disponibilidad %</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {availabilityByKitchen.map((kitchen, i) => (
-                    <tr key={i} className="border-b hover:bg-mv-gray-50">
-                      <td className="p-2">{kitchen.city}</td>
-                      <td className="p-2 font-medium">{kitchen.catering_name}</td>
-                      <td className="text-center p-2">
-                        <span className="bg-mv-green-pale px-2 py-1 rounded text-xs font-semibold">
-                          {kitchen.level}
-                        </span>
-                      </td>
-                      <td className="text-right p-2">{kitchen.disponibles}</td>
-                      <td className="text-right p-2">{kitchen.carta_total}</td>
-                      <td className="text-right p-2 font-semibold text-mv-green-dark">
-                        {kitchen.disponibilidad_pct}%
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-mv-gray-600">Sin datos disponibles</p>
-          )}
-        </Card>
-
-        {/* Foodcost por Plato */}
-        <Card className="p-6">
-          <h3 className="font-heading font-semibold mb-4">💰 Foodcost por Plato (Top 10)</h3>
-          {loadingTables ? (
-            <p className="text-mv-gray-600">Cargando...</p>
-          ) : foodcostByPlate.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="border-b bg-mv-gray-100">
-                    <th className="text-left p-2">Plato</th>
-                    <th className="text-right p-2">Foodcost %</th>
-                    <th className="text-right p-2">Costo Local</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {foodcostByPlate.map((plate, i) => (
-                    <tr key={i} className="border-b hover:bg-mv-gray-50">
-                      <td className="p-2 font-medium">{plate.meal_name}</td>
-                      <td className="text-right p-2 font-semibold">{plate.food_cost_pct}%</td>
-                      <td className="text-right p-2">{plate.food_cost_local}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-mv-gray-600">Sin datos disponibles</p>
-          )}
-        </Card>
-
-        {/* Compliance Rules Detail */}
-        <Card className="p-6">
-          <h3 className="font-heading font-semibold mb-4">📋 Detalle de Reglas por Ciudad (W252026)</h3>
-          {loadingTables ? (
-            <p className="text-mv-gray-600">Cargando...</p>
-          ) : complianceDetails.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4">
-              {complianceDetails.map((city, i) => (
-                <div key={i} className="border rounded p-4 bg-mv-gray-50">
-                  <div className="flex justify-between items-start mb-3">
-                    <h4 className="font-semibold text-mv-green-dark">{city.city}</h4>
-                    <span className="text-lg font-bold text-mv-green-dark">{city.compliance_pct}%</span>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
-                    {city.rules_detail && Object.entries(city.rules_detail).map(([rule, detail]: [string, any]) => (
-                      <div key={rule} className="flex justify-between">
-                        <span className="text-mv-gray-600">{rule.replace(/_/g, ' ')}</span>
-                        <span className="font-semibold">{detail}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-mv-gray-600">Sin datos disponibles</p>
-          )}
-        </Card>
-      </div>
     </main>
   );
 }
