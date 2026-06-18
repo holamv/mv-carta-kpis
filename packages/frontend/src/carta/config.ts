@@ -1,5 +1,50 @@
 import type { Country, PaisReglas } from './types';
 
+// MAPEO PAÍS → CIUDAD → BRANCH_OFFICE_ID (según guía Leo)
+export const CITY_MAPPING: Record<Country, Record<string, number>> = {
+  PE: {
+    Lima: 2,
+    Piura: 1,
+  },
+  MX: {
+    CDMX: 3,
+    GDL: 5,
+    Monterrey: 6,
+  },
+  CO: {
+    Bogotá: 8,
+  },
+};
+
+// Inverso: branch_office_id → { city, country }
+export const BRANCH_OFFICE_REVERSE: Record<number, { city: string; country: Country }> = {
+  1: { city: "Piura", country: "PE" },
+  2: { city: "Lima", country: "PE" },
+  3: { city: "CDMX", country: "MX" },
+  5: { city: "GDL", country: "MX" },
+  6: { city: "Monterrey", country: "MX" },
+  8: { city: "Bogotá", country: "CO" },
+};
+
+/**
+ * Arma semana_id SIN CEROS: semana 25 año 2026 = "252026", semana 9 = "92026"
+ * (Leo: NUNCA "0252026" o "092026")
+ */
+export function buildSemanaId(weekNum: number, year: number): string {
+  return `${weekNum}${year}`;
+}
+
+/**
+ * Parsea "W25-2026" → { week: 25, year: 2026 }
+ */
+export function parseSemana(semanaStr: string): { week: number; year: number } {
+  const [weekPart, yearPart] = semanaStr.split("-");
+  return {
+    week: parseInt(weekPart.substring(1), 10),
+    year: parseInt(yearPart, 10),
+  };
+}
+
 // Reglas de validación de carta por país
 export const PAIS_REGLAS: Record<Country, PaisReglas> = {
   PE: {
