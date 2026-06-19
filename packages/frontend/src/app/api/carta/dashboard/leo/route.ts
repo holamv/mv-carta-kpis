@@ -23,7 +23,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const semana = request.nextUrl.searchParams.get("semana") || "W25-2026";
     const pais = request.nextUrl.searchParams.get("pais") || "PE";
-    const ciudad = request.nextUrl.searchParams.get("ciudad") || "Lima";
+    const ciudad = request.nextUrl.searchParams.get("ciudad");
+
+    // Validar que ciudad no esté vacía (BUGFIX: Error 1)
+    if (!ciudad || ciudad.trim() === "") {
+      return NextResponse.json(
+        { success: false, error: "City is required. Use one of: Lima, Piura, Bogotá, CDMX, Monterrey, Guadalajara" },
+        { status: 400 }
+      );
+    }
 
     // Parsear semana → buildSemanaId SIN CEROS (Leo rule)
     const { week, year } = parseSemana(semana);
@@ -132,9 +140,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       },
     });
   } catch (error) {
-    console.error("[/api/carta/dashboard/leo]", error);
+    const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+    console.error("[/api/carta/dashboard/leo]", errorMsg);
+
+    // Si es error de parsing JSONB, retornar más específico
+    if (errorMsg.includes("JSON")) {
+      return NextResponse.json(
+        { success: false, error: "Error parsing data from database", details: errorMsg },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : "Error" },
+      { success: false, error: "Internal server error", details: errorMsg },
       { status: 500 }
     );
   }

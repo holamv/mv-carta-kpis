@@ -20,8 +20,15 @@ export default function CartaPage() {
   const [ciudad, setCiudad] = useState('Lima'); // Inicializar con Lima
   const [semanaSeleccionada, setSemanaSeleccionada] = useState(getCurrentWeek());
 
-
   const ciudadesDisponibles = useMemo(() => CIUDADES_POR_PAIS[pais], [pais]);
+
+  // Resetear ciudad cuando cambia país (BUG FIX: Error 2)
+  useEffect(() => {
+    const nuevasCiudades = CIUDADES_POR_PAIS[pais];
+    if (!nuevasCiudades.includes(ciudad)) {
+      setCiudad(nuevasCiudades[0]); // Usar primera ciudad disponible
+    }
+  }, [pais]);
 
   // Cargar dashboard Leo cuando cambias país/ciudad/semana
   useEffect(() => {
@@ -170,7 +177,6 @@ export default function CartaPage() {
                 onChange={(e) => setCiudad(e.target.value)}
                 className="w-full rounded-lg border border-mv-gray-300 px-3 py-2"
               >
-                <option value="">Todas las ciudades</option>
                 {ciudadesDisponibles.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
