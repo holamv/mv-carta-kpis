@@ -2,7 +2,7 @@
 import type { FoodcostOutput } from "../calculations/types";
 import type { Country } from "../types";
 import { getPreviousWeek } from "../utils";
-import { COUNTRY_ID_MAP, buildDateRangeFilter } from "./utils";
+import { ID_COUNTRY_MAP, buildDateRangeFilter } from "./utils";
 
 const SUPABASE_URL = "https://hzpycmczwkwbfrqzvfyz.supabase.co/rest/v1";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6cHljbWN6d2t3YmZycXp2Znl6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4Mjc0MjgsImV4cCI6MjA5MTQwMzQyOH0.QSYb5PPqmlmRLL6URrjStNZhPgsW5s0IxnTWD-EEinM";
@@ -81,7 +81,7 @@ export class FoodcostAdapter {
       Object.entries(costByCountry).forEach(([countryId, { totalCosto, totalPrecio }]) => {
         if (totalPrecio > 0) {
           const pct = (totalCosto / totalPrecio) * 100;
-          const countryCode = COUNTRY_ID_MAP[parseInt(countryId)];
+          const countryCode = ID_COUNTRY_MAP[parseInt(countryId)];
           if (countryCode) {
             result[countryCode] = Math.round(pct * 100) / 100;
           }
