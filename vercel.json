@@ -1,7 +1,7 @@
 {
-  "buildCommand": "cd packages/frontend && npm run build",
+  "buildCommand": "npm run build",
   "installCommand": "npm install",
-  "outputDirectory": "packages/frontend/.next",
+  "outputDirectory": ".next",
   "env": {
     "NEXT_PUBLIC_SUPABASE_URL": "https://hzpycmczwkwbfrqzvfyz.supabase.co",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6cHljbWN6d2t3YmZycXp2Znl6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4Mjc0MjgsImV4cCI6MjA5MTQwMzQyOH0.QSYb5PPqmlmRLL6URrjStNZhPgsW5s0IxnTWD-EEinM"
