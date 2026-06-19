@@ -16,21 +16,21 @@ test.describe('Dashboard Leo - Error Scenarios', () => {
   });
 
   test('ERROR 2: Cambiar país sin resetear ciudad causa 400', async ({ request }) => {
-    // 1. Obtener datos de México - Monterrey
-    const responseMX = await request.get(
-      `${BASE_URL}/api/carta/dashboard/leo?semana=W25-2026&pais=MX&ciudad=Monterrey`
-    );
-    expect(responseMX.ok()).toBeTruthy();
-    console.log('✅ MX - Monterrey funciona');
-
-    // 2. Intentar obtener con Monterrey pero país PE (Monterrey no existe en PE)
+    // 1. Obtener datos de Perú - Piura (verificar que existe)
     const responsePE = await request.get(
-      `${BASE_URL}/api/carta/dashboard/leo?semana=W25-2026&pais=PE&ciudad=Monterrey`
+      `${BASE_URL}/api/carta/dashboard/leo?semana=W25-2026&pais=PE&ciudad=Piura`
+    );
+    expect(responsePE.ok()).toBeTruthy();
+    console.log('✅ PE - Piura funciona');
+
+    // 2. Intentar obtener con Piura pero país MX (Piura no existe en MX)
+    const responseMX = await request.get(
+      `${BASE_URL}/api/carta/dashboard/leo?semana=W25-2026&pais=MX&ciudad=Piura`
     );
 
-    expect(responsePE.ok()).toBeFalsy();
-    const errorData = await responsePE.json();
-    console.log(`❌ ERROR: PE con ciudad MX retorna: ${errorData.error}`);
+    expect(responseMX.ok()).toBeFalsy();
+    const errorData = await responseMX.json();
+    console.log(`❌ ERROR: MX con ciudad PE retorna: ${errorData.error}`);
     expect(errorData.success).toBe(false);
   });
 
