@@ -81,10 +81,14 @@ export default function CartaPage() {
                 onChange={(e) => setSemana(e.target.value)}
                 className="w-full p-2 border rounded"
               >
-                <option value={getCurrentWeek()}>{getCurrentWeek()}</option>
-                <option value={getPreviousWeek(getCurrentWeek())}>
-                  {getPreviousWeek(getCurrentWeek())}
-                </option>
+                {Array.from({ length: 16 }, (_, i) => {
+                  const week = 25 - i;
+                  return `W${week}-2026`;
+                }).map((w) => (
+                  <option key={w} value={w}>
+                    {w}
+                  </option>
+                ))}
               </select>
             </div>
 
