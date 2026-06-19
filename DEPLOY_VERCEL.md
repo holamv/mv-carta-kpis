@@ -1,103 +1,60 @@
-# 🚀 Instrucciones de Deploy a Vercel
+# 🚀 Despliegue a Vercel - Dashboard KPI Carta
 
-## Estado Actual ✅
-- **Tests Playwright:** 10/10 PASS (42.3s)
-- **Errores detectados:** 0
-- **Build status:** Ready for production
-- **Endpoint:** `/api/carta/dashboard/leo` - Funcional ✅
+## Estado Actual
+✅ Código commiteado y pusheado a GitHub: `https://github.com/holamv/mv-carta-kpis`
+✅ vercel.json configurado con variables de entorno
+✅ Build compilado sin errores localmente
 
-## Opción 1: Deploy por GitHub (Recomendado)
+## Método: GitHub Connect (Recomendado)
 
-1. **Conecta el repositorio a Vercel:**
-   - Ve a https://vercel.com/new
-   - Selecciona "Import Git Repository"
-   - Selecciona tu repo: `holamv/mv-carta-kpis`
-   - Click "Import"
+### Paso 1: Ir a Vercel Dashboard
+1. Abre `https://vercel.com/dashboard`
+2. Inicia sesión con tu cuenta (o crea una nueva)
 
-2. **Configura el proyecto:**
-   - **Framework Preset:** Next.js
-   - **Root Directory:** `packages/frontend`
-   - **Build Command:** `npm run build`
-   - **Output Directory:** `.next`
+### Paso 2: Agregar Nuevo Proyecto
+1. Click en **"Add New..."** → **"Project"**
+2. Click en **"Import Git Repository"**
+3. Selecciona **GitHub** como proveedor
 
-3. **Variables de Entorno:**
-   ```
-   NEXT_PUBLIC_SUPABASE_URL=https://hzpycmczwkwbfrqzvfyz.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6cHljbWN6d2t3YmZycXp2Znl6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4Mjc0MjgsImV4cCI6MjA5MTQwMzQyOH0.QSYb5PPqmlmRLL6URrjStNZhPgsW5s0IxnTWD-EEinM
-   ```
+### Paso 3: Conectar Repositorio GitHub
+1. Autoriza Vercel para acceder a tu GitHub
+2. Busca el repositorio: `holamv/mv-carta-kpis`
+3. Click en **"Import"**
 
-4. **Click "Deploy"**
+### Paso 4: Configurar Proyecto
+- **Project Name:** `mv-carta-kpis`
+- **Framework Preset:** Next.js (automático)
+- **Root Directory:** `packages/frontend/` (IMPORTANTE)
 
-## Opción 2: Deploy por CLI con Token
-
-1. **Copia tu token de Vercel:**
-   - https://vercel.com/account/tokens
-   - Crea un nuevo token
-
-2. **Haz deploy:**
-   ```bash
-   export VERCEL_TOKEN="tu_token_aqui"
-   cd packages/frontend
-   vercel deploy --prod --token $VERCEL_TOKEN
-   ```
-
-## Opción 3: Usa GitHub Actions
-
-Crea `.github/workflows/deploy.yml`:
-```yaml
-name: Deploy to Vercel
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: vercel/action@master
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+**Environment Variables:**
+```
+NEXT_PUBLIC_SUPABASE_URL=https://hzpycmczwkwbfrqzvfyz.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6cHljbWN6d2t3YmZycXp2Znl6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4Mjc0MjgsImV4cCI6MjA5MTQwMzQyOH0.QSYb5PPqmlmRLL6URrjStNZhPgsW5s0IxnTWD-EEinM
 ```
 
-## Verificación Post-Deploy
+### Paso 5: Desplegar
+1. Click en **"Deploy"**
+2. Espera 2-3 minutos
+3. ✅ URL: `https://mv-carta-kpis.vercel.app`
 
-Una vez deployado, verifica:
+### Paso 6: Auto-Deploy
+Automático: Cada push a `main` → nuevo deploy
 
-```bash
-# Endpoint disponible
-curl https://tu-dominio-vercel.vercel.app/api/carta/dashboard/leo?semana=W25-2026&pais=PE&ciudad=Lima
+---
 
-# Dashboard accesible
-https://tu-dominio-vercel.vercel.app/carta
-```
+## Checklist Post-Deploy
 
-## 📊 Checklist Pre-Deploy
+- [ ] Dashboard carga en: `https://mv-carta-kpis.vercel.app/carta`
+- [ ] Filtros (país, ciudad, semana) funcionan
+- [ ] API responde: `/api/carta/dashboard/leo`
+- [ ] Datos completos: 16 semanas con compliance/foodcost
+- [ ] Semanas W10-W25 todas disponibles
+- [ ] Compliance varía por ciudad
+- [ ] Actualizar PROJECT_SCOPE.md con URL de prod
 
-- ✅ Build Next.js completado
-- ✅ 10/10 Playwright tests PASS
-- ✅ Endpoint `/api/carta/dashboard/leo` funcional
-- ✅ Disponibilidad varía correctamente (7 cocinas)
-- ✅ Aislamiento por país funciona (PE ≠ MX)
-- ✅ Variables de entorno configuradas
-- ✅ vercel.json creado
+---
 
-## Errores Comunes
-
-**Error: "No existing credentials"**
-- Usa Opción 1 (GitHub) o Opción 2 (Token)
-
-**Error: "Cannot find module"**
-- Asegúrate de que `npm install` está completado
-- Verifica que `packages/frontend/` es el root directory
-
-**Error: "API endpoints not working"**
-- Verifica variables de entorno Supabase
-- Confirma que el backend es accesible desde Vercel
-
-## Soporte
-
-Si necesitas ayuda, contacta al equipo de Vercel:
-https://vercel.com/support
+## Status Deployment
+Generado: 2026-06-19
+Repositorio: https://github.com/holamv/mv-carta-kpis
+Rama: main
